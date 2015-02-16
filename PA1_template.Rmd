@@ -1,25 +1,130 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Peer Assignment 1 for the course reproducible research"
+output: html_document
 ---
 
+This is an R Markdown document created by Meisam Booshehri for the peer assignment 1 for the course "reproducible research".
 
-## Loading and preprocessing the data
+###Loading and preprocessing the data
+in this section the dataset is loaded to R by using the following R code:
 
-
-
-## What is mean total number of steps taken per day?
-
-
-
-## What is the average daily activity pattern?
-
+```{r, echo=TRUE}
+dt<-read.csv("activity.csv")
+head(dt)
+```
 
 
-## Imputing missing values
+###What is mean total number of steps taken per day?
+In this section we will ignore the missing values in the dataset.
+
+1. Calculate the total number of steps taken per day
+```{r, echo=TRUE}
+good<- complete.cases(dt)
+newdt<-dt[good,]
+df<-aggregate(steps ~ date, data = newdt, sum)
+colnames(df)<-c("Date","total_number_of_steps")
+df
+```
+
+2. Here is a histrogram of the total numebr of steps taken per day
+```{r, echo=TRUE}
+
+hist(df$total_number_of_steps,main="Total number of steps taken per day",breaks=100)
+
+```
+
+
+3. Calculate and report the mean and the median of the number of steps taken per day
+
+```{r, echo=TRUE}
+meanTable<-aggregate(steps ~ date, data = newdt, mean)
+colnames(meanTable)<-c("date","averageSteps")
+meanTable
+aggregate(steps ~ date, data = newdt, median,na.rm=TRUE)
+```
+
+###What is the average daily pattern?
+
+1. In this section a time series plot of the 5-minute interval and the average number of steps taken is shown.
+
+```{r, echo=TRUE}
+newdf<-aggregate(steps ~ interval, data = newdt, mean)
+colnames(newdf)<-c("interval","averageSteps")
+X1<-newdf$interval
+X2<-newdf$averageSteps
+plot(X1,X2, type='l', xlab="intervals", ylab="average of steps across all days")
+head(newdf)
+```
+
+2. The following 5-minute interval contains the maximum number of steps according to the daily pattern:
+```{r, echo=TRUE}
+newdf[newdf$averageSteps==max(newdf$averageSteps),]
+```
+
+
+###Imputing missing Values
+1. The number of missing values are as follows:
+```{r, echo=TRUE}
+sapply(dt, function(x) sum(is.na(x)))
+```
+
+2.Our strategy for filling in all the missing values in the dataset is to make use of the mean of steps in the intervals across all the days as computed above.Please see below. dt2 is the new data set with the missing values filled in by the average number of steps taken per interval, averaged across all days.
+
+```{r, echo=TRUE}
+bad<-is.na(dt$steps)
+dt2<-dt
+
+for(i in 1:nrow(dt2[bad,])){
+  Temp<-subset(newdf, interval==dt2[bad,][i,"interval"], select = c(interval,averageSteps))
+  dt2[bad,][i,"steps"]=Temp[1,"averageSteps"]
+}
+```
+
+3. For the new imputed dataset a histogram has been shown below. Thererafter you can see a report on the new mean and median.
+```{r, echo=TRUE}
+df2<-aggregate(steps ~ date, data = dt2, sum)
+colnames(df2)<-c("Date","total_number_of_steps")
+
+hist(df2$total_number_of_steps,col="red",xlab="total number of steps",main="Total number of steps taken per day",breaks=100)
+
+
+meanTable2<-aggregate(steps ~ date, data = dt2, mean)
+colnames(meanTable2)<-c("date","averageSteps")
+meanTable2
+
+medianTable2<-aggregate(steps ~ date, data = dt2, median)
+colnames(medianTable2)<-c("date","averageSteps")
+medianTable2
+```
+
+###Are there differences in activity patterns between weekdays and weekends?
+
+1. Below, you can see the analysis to show the difference between the activity patterns in the weekends and weekdays.
+
+```{r, echo=TRUE}
+Sys.setlocale("LC_TIME", "English")
+
+levels=factor(ifelse(weekdays(as.Date(newdt$date))== "Saturday" |weekdays(as.Date(newdt$date))== "Sunday", "weekend", "weekday"),levels=c("weekday","weekend"))
+
+newdt2<-cbind(newdt,levels)
+colnames(newdt2)<-c("steps","date","interval","levels")
+
+
+newdf2<-aggregate(steps~interval, data = subset(newdt2, levels=="weekday",select=c(steps,interval)), mean)
+
+colnames(newdf2)<-c("interval","averageSteps")
+X1<-newdf2$interval
+X2<-newdf2$averageSteps
+par(mfcol=c(1,2))
+
+plot(X1,X2, type='l', col="blue",xlab="intervals", ylab="average of steps across all days", main="Weekdays")
 
 
 
-## Are there differences in activity patterns between weekdays and weekends?
+
+newdf3<-aggregate(steps~interval, data = subset(newdt2, levels=="weekend",select=c(steps,interval)), mean)
+X3<-newdf3$interval
+X4<-newdf3$averageSteps
+plot(X3,X4, type='l', col="blue",xlab="intervals", ylab="average of steps across all days", main="Weekends")
+
+```
